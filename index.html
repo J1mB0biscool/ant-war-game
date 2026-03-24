@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carpenter Ants vs Termites: Map Segregation</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        h1 { margin: 10px 0 5px 0; color: #b0b0b0; }
+        p { margin: 0 0 10px 0; font-size: 14px; }
+        .instructions { font-size: 15px; color: #f1c40f; font-weight: bold; margin-bottom: 8px; }
+
+        #timer-display {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2ecc71;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #game-container {
+            width: 1000px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        #game-ui {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 5px 5px 0 0;
+            box-sizing: border-box;
+            border: 4px solid #333;
+            border-bottom: none;
+        }
+
+        .team-stats { display: flex; flex-direction: column; width: 34%; }
+        .blue-team { color: #d0d0d0; }
+        .termite-team { color: #e67e22; text-align: right; }
+        .stat-line { font-weight: bold; margin-bottom: 5px; font-size: 13.5px; }
+        .resource-text { color: #ecf0f1; }
+        .leaf-text { color: #2ecc71; }
+        .seed-text { color: #e67e22; }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 32%;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin: 2px;
+            background-color: rgb(45, 45, 45);
+            color: white;
+            border: 1px solid #777;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        button:hover { background-color: rgb(75, 75, 75); }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
+            border-color: #444;
+        }
+
+        #assemble-status {
+            margin-top: 5px;
+            color: #f1c40f;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        canvas {
+            background-color: #1a1a1a;
+            border: 4px solid #333;
+            border-radius: 0 0 5px 5px;
+            cursor: crosshair;
+            display: block;
+        }
+
+        #settings-panel {
+            position: absolute;
+            top: 78px;
+            right: 12px;
+            width: 290px;
+            background: rgba(0, 0, 0, 0.96);
+            border: 2px solid #666;
+            border-radius: 10px;
+            padding: 14px;
+            box-sizing: border-box;
+            display: none;
+            z-index: 20;
+            box-shadow: 0 0 18px rgba(0, 0, 0, 0.55);
+        }
+
+        #settings-panel h3 {
+            margin: 0 0 12px 0;
+            color: #f1c40f;
+            font-size: 20px;
+        }
+
+        .setting-row {
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .setting-row label {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            color: #ddd;
+        }
+
+        .setting-row input[type="range"] {
+            width: 100%;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 6px 0;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .close-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            border: 2px solid #e74c3c;
+            z-index: 25;
+        }
+    </style>
+</head>
+<body>
+    <h1>Carpenter Ants vs Termites: The Great Swarm</h1>
+    <div id="timer-display">Prep Phase: 05:00</div>
+    <div class="instructions">Walk into HOLES to cross maps! Hold <b>[H]</b> near Big Leaves/Seed Piles to Harvest.</div>
+    <p><b>CLICK ANYWHERE to enable Audio & Music!</b> WASD to move. <b>Q / E</b> Zoom. <b>F</b> Toggle Soldiers.</p>
+
+    <div id="game-container">
+        <div id="game-ui">
+            <div class="team-stats blue-team">
+                <div class="stat-line">Carpenter Queen HP: <span id="b-hp">1000</span> | Hunger: <span id="b-hunger">1500</span></div>
+                <div class="stat-line resource-text">Stored: <span class="leaf-text" id="b-leaves">0</span> Leaves | <span class="seed-text" id="b-seeds">0</span> Seeds</div>
+                <div class="stat-line">Work: <span id="b-work">0</span> | S.Work: <span id="b-swork">0</span> | Sold: <span id="b-sold">0</span> | Maj: <span id="b-major">0</span></div>
+            </div>
+
+            <div class="controls">
+                <div class="btn-group">
+                    <button id="btn-worker" onclick="buyUnit('worker')">Worker (3 L)</button>
+                    <button id="btn-sworker" onclick="buyUnit('super_worker')">S.Worker (10 L, 10 S)</button>
+                    <button id="btn-soldier" onclick="buyUnit('soldier')">Soldier/Major (5 S)</button>
+                </div>
+                <div class="btn-group">
+                    <button id="btn-settings" type="button">Settings</button>
+                </div>
+                <div id="assemble-status">Soldiers: WANDERING BASE (Press F)</div>
+            </div>
+
+            <div class="team-stats termite-team">
+                <div class="stat-line" id="t-queen-status">Termite Queen (Invulnerable)</div>
+                <div class="stat-line resource-text">Stored: <span class="leaf-text" id="t-leaves">0</span> Leaves | <span class="seed-text" id="t-seeds">0</span> Seeds</div>
+                <div class="stat-line">Work: <span id="t-work">0</span> | S.Work: <span id="t-swork">0</span> | Sold: <span id="t-sold">0</span> | Maj: <span id="t-major">0</span> | K: <span id="t-king">1</span></div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="1000" height="650"></canvas>
+
+        <div id="settings-panel">
+            <h3>Settings</h3>
+
+            <div class="setting-row">
+                <label for="master-volume">
+                    <span>Master Volume</span>
+                    <span id="master-volume-label">100%</span>
+                </label>
+                <input id="master-volume" type="range" min="0" max="200" value="100" />
+            </div>
+
+            <div class="setting-row">
+                <label for="sfx-volume">
+                    <span>SFX Volume</span>
+                    <span id="sfx-volume-label">100%</span>
+                </label>
+                <input id="sfx-volume" type="range" min="0" max="200" value="100" />
+            </div>
+
+            <div class="setting-row">
+                <label for="music-volume">
+                    <span>Music Volume</span>
+                    <span id="music-volume-label">35%</span>
+                </label>
+                <input id="music-volume" type="range" min="0" max="200" value="35" />
+            </div>
+
+            <div class="check-row">
+                <input id="music-enabled" type="checkbox" checked />
+                <label for="music-enabled" style="margin:0;">Enable Music</label>
+            </div>
+
+            <div class="close-row">
+                <button id="close-settings" type="button">Close</button>
+            </div>
+        </div>
+
+        <div id="game-over">
+            <h2 id="go-title" style="font-size: 42px; margin: 0; color: #e74c3c;">The Queen Has Fallen!</h2>
+            <p id="go-desc" style="font-size: 24px; color: white;">Your colony was destroyed.</p>
+            <button onclick="resetGame()" style="padding: 15px 30px; font-size: 20px; margin-top: 15px; background-color: rgb(45,45,45); color: white; border: 1px solid white;">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const AUDIO_STORAGE_KEY = 'carpenterAntsVsTermitesAudioSettings';
+
+        function clampValue(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function numericOr(value, fallback) {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : fallback;
+        }
+
+        function loadAudioSettings() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(AUDIO_STORAGE_KEY) || '{}');
+                return {
+                    masterVolume: clampValue(numericOr(saved.masterVolume, 1), 0, 2),
+                    sfxVolume: clampValue(numericOr(saved.sfxVolume, 1), 0, 2),
+                    musicVolume: clampValue(numericOr(saved.musicVolume, 0.35), 0, 2),
+                    musicEnabled: typeof saved.musicEnabled === 'boolean' ? saved.musicEnabled : true
+                };
+            } catch {
+                return {
+                    masterVolume: 1,
+                    sfxVolume: 1,
+                    musicVolume: 0.35,
+                    musicEnabled: true
+                };
+            }
+        }
+
+        let audioSettings = loadAudioSettings();
+
+        function saveAudioSettings() {
+            try {
+                localStorage.setItem(AUDIO_STORAGE_KEY, JSON.stringify(audioSettings));
+            } catch {}
+        }
+
+        // --- AUDIO MANAGER: SFX + MUSIC (MP3/WAV Support) ---
+        const sfx = {
+            ctx: null,
+            masterGain: null,
+            sfxBus: null,
+            musicBus: null,
+            musicStarted: false,
+            
+            // Sound Buffers
+            buffers: {},
+            // Music Elements
+            musicTrack: null,
+            currentMusicUrl: null,
+
+            // URL Configuration (Using GitHub Raw for reliable hosting of Kenney Assets)
+            urls: {
+                harvest: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/click_003.wav',
+                dropoff: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/drop_002.wav',
+                bite: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/scratch_004.wav',
+                egg: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/pluck_001.wav',
+                hatch: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/switch_006.wav',
+                teleport: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/maximize_008.wav',
+                death: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/minimize_009.wav',
+                phase: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/confirmation_001.wav',
+                // Placeholder music URLs (Wikimedia Commons - Kevin MacLeod)
+                music_prep: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/Kevin_MacLeod_-_Impact_Prelude.ogg', 
+                music_swarm: 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Kevin_MacLeod_-_Volatile_Reaction.ogg',
+                music_vulnerable: 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Kevin_MacLeod_-_Volatile_Reaction.ogg'
+            },
+
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+                    this.masterGain = this.ctx.createGain();
+                    this.sfxBus = this.ctx.createGain();
+                    this.musicBus = this.ctx.createGain();
+
+                    this.sfxBus.connect(this.masterGain);
+                    this.musicBus.connect(this.masterGain);
+                    this.masterGain.connect(this.ctx.destination);
+
+                    this.loadSounds();
+                    this.applySettings();
+                }
+
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                if (!this.musicStarted) this.startMusic();
+                this.applySettings();
+            },
+
+            loadSounds: function() {
+                // Load SFX into buffers
+                Object.keys(this.urls).forEach(key => {
+                    if (key.startsWith('music_')) return; // Skip music, stream it instead
+                    fetch(this.urls[key])
+                        .then(response => response.arrayBuffer())
+                        .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
+                        .then(audioBuffer => {
+                            this.buffers[key] = audioBuffer;
+                        })
+                        .catch(e => console.warn("Audio load failed for " + key, e));
+                });
+            },
+
+            applySettings: function() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                this.masterGain.gain.setTargetAtTime(audioSettings.masterVolume, now, 0.01);
+                this.sfxBus.gain.setTargetAtTime(audioSettings.sfxVolume, now, 0.01);
+                this.musicBus.gain.setTargetAtTime(audioSettings.musicEnabled ? audioSettings.musicVolume : 0, now, 0.02);
+                
+                if (this.musicTrack) {
+                    this.musicTrack.volume = audioSettings.musicEnabled ? audioSettings.musicVolume * audioSettings.masterVolume : 0;
+                }
+            },
+
+            startMusic: function() {
+                this.musicStarted = true;
+                this.checkMusicTrack();
+                setInterval(() => this.checkMusicTrack(), 1000);
+            },
+
+            checkMusicTrack: function() {
+                if (!audioSettings.musicEnabled) {
+                    if (this.musicTrack) { this.musicTrack.pause(); this.musicTrack = null; }
+                    return;
+                }
+
+                let targetUrl = this.urls.music_prep;
+                if (gamePhase === "SWARM") targetUrl = this.urls.music_swarm;
+                if (gamePhase === "VULNERABLE") targetUrl = this.urls.music_vulnerable;
+
+                if (this.currentMusicUrl !== targetUrl) {
+                    if (this.musicTrack) {
+                        this.musicTrack.pause();
+                        this.musicTrack = null;
+                    }
+                    this.currentMusicUrl = targetUrl;
+                    this.musicTrack = new Audio(targetUrl);
+                    this.musicTrack.loop = true;
+                    this.musicTrack.volume = audioSettings.musicVolume * audioSettings.masterVolume;
+                    this.musicTrack.crossOrigin = "anonymous"; 
+                    
+                    const playPromise = this.musicTrack.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.log("Music autoplay prevented or load failed:", error);
+                        });
+                    }
+                } else if (this.musicTrack && this.musicTrack.paused && audioSettings.musicEnabled) {
+                    this.musicTrack.play().catch(e => {});
+                }
+            },
+
+            play: function(type, x, y, loc) {
+                if (!this.ctx || !this.buffers[type]) return;
+
+                let pLoc = bugs.find(a => a.role === 'player')?.location || 'outside';
+                if (loc && loc !== pLoc) return;
+
+                let volumeScale = 1.0;
+                if (x !== undefined && y !== undefined) {
+                    let p = bugs.find(a => a.role === 'player');
+                    if (p) {
+                        let d = dist(x, y, p.x, p.y);
+                        if (d > 1200) return;
+                        volumeScale = Math.max(0, 1 - (d / 1200));
+                    }
+                }
+
+                const source = this.ctx.createBufferSource();
+                source.buffer = this.buffers[type];
+                
+                const gain = this.ctx.createGain();
+                gain.gain.value = volumeScale; 
+
+                source.connect(gain);
+                gain.connect(this.sfxBus);
+                
+                source.playbackRate.value = 0.9 + Math.random() * 0.2;
+                source.start(0);
+            }
+        };
+
+        window.addEventListener('click', () => { sfx.init(); window.focus(); });
+        window.addEventListener('keydown', () => { sfx.init(); });
+        window.addEventListener('touchstart', () => { sfx.init(); window.focus(); }, { passive: true });
+
+        const MAPS = {
+            outside: { w: 3000, h: 2000, bg: '#4CAF50', dirt: [], dirtColor: '#3e2723' },
+            blue_colony: { w: 1500, h: 1000, bg: '#2c1e16', dirt: [], dirtColor: '#3e291f' },
+            termite_colony: { w: 1500, h: 1000, bg: '#4a3623', dirt: [], dirtColor: '#5c4632' }
+        };
+
+        Object.keys(MAPS).forEach(key => {
+            let m = MAPS[key];
+            for (let i = 0; i < (key === 'outside' ? 400 : 200); i++) {
+                m.dirt.push({ x: Math.random() * m.w, y: Math.random() * m.h, size: Math.random() * 3 + 1 });
+            }
+        });
+
+        const HOLES = {
+            blue_outside: { loc: 'outside', x: 250, y: 1750, linkLoc: 'blue_colony', linkX: 1300, linkY: 500, spawnDx: -70, spawnDy: 0, color: '#1a100a', label: 'ENTER COLONY' },
+            blue_inside: { loc: 'blue_colony', x: 1300, y: 500, linkLoc: 'outside', linkX: 250, linkY: 1750, spawnDx: 50, spawnDy: -50, color: '#4CAF50', label: 'EXIT TO SURFACE' },
+            termite_outside: { loc: 'outside', x: 2750, y: 250, linkLoc: 'termite_colony', linkX: 200, linkY: 500, spawnDx: 70, spawnDy: 0, color: '#1a100a', label: 'ENTER MOUND' },
+            termite_inside: { loc: 'termite_colony', x: 200, y: 500, linkLoc: 'outside', linkX: 2750, linkY: 250, spawnDx: -50, spawnDy: 50, color: '#4CAF50', label: 'EXIT TO SURFACE' }
+        };
+
+        let camera = { x: 0, y: 0, zoom: 1.0, visW: canvas.width, visH: canvas.height };
+
+        const ui = {
+            timer: document.getElementById('timer-display'),
+            bHp: document.getElementById('b-hp'),
+            bHunger: document.getElementById('b-hunger'),
+            bLeaves: document.getElementById('b-leaves'),
+            bSeeds: document.getElementById('b-seeds'),
+            bWork: document.getElementById('b-work'),
+            bSWork: document.getElementById('b-swork'),
+            bSold: document.getElementById('b-sold'),
+            bMajor: document.getElementById('b-major'),
+            tStatus: document.getElementById('t-queen-status'),
+            tLeaves: document.getElementById('t-leaves'),
+            tSeeds: document.getElementById('t-seeds'),
+            tWork: document.getElementById('t-work'),
+            tSWork: document.getElementById('t-swork'),
+            tSold: document.getElementById('t-sold'),
+            tMajor: document.getElementById('t-major'),
+            tKing: document.getElementById('t-king'),
+            btnWork: document.getElementById('btn-worker'),
+            btnSWork: document.getElementById('btn-sworker'),
+            btnSold: document.getElementById('btn-soldier'),
+            assemble: document.getElementById('assemble-status'),
+            goScreen: document.getElementById('game-over'),
+            goTitle: document.getElementById('go-title'),
+            goDesc: document.getElementById('go-desc'),
+
+            btnSettings: document.getElementById('btn-settings'),
+            settingsPanel: document.getElementById('settings-panel'),
+            closeSettings: document.getElementById('close-settings'),
+            masterVolume: document.getElementById('master-volume'),
+            masterVolumeLabel: document.getElementById('master-volume-label'),
+            sfxVolume: document.getElementById('sfx-volume'),
+            sfxVolumeLabel: document.getElementById('sfx-volume-label'),
+            musicVolume: document.getElementById('music-volume'),
+            musicVolumeLabel: document.getElementById('music-volume-label'),
+            musicEnabled: document.getElementById('music-enabled')
+        };
+
+        function syncSettingsUI() {
+            ui.masterVolume.value = Math.round(audioSettings.masterVolume * 100);
+            ui.sfxVolume.value = Math.round(audioSettings.sfxVolume * 100);
+            ui.musicVolume.value = Math.round(audioSettings.musicVolume * 100);
+            ui.musicEnabled.checked = audioSettings.musicEnabled;
+
+            ui.masterVolumeLabel.textContent = `${ui.masterVolume.value}%`;
+            ui.sfxVolumeLabel.textContent = `${ui.sfxVolume.value}%`;
+            ui.musicVolumeLabel.textContent = `${ui.musicVolume.value}%`;
+        }
+
+        function applyAudioSettingsFromUI() {
+            audioSettings.masterVolume = clampValue(Number(ui.masterVolume.value) / 100, 0, 2);
+            audioSettings.sfxVolume = clampValue(Number(ui.sfxVolume.value) / 100, 0, 2);
+            audioSettings.musicVolume = clampValue(Number(ui.musicVolume.value) / 100, 0, 2);
+            audioSettings.musicEnabled = ui.musicEnabled.checked;
+
+            syncSettingsUI();
+            saveAudioSettings();
+            sfx.applySettings();
+        }
+
+        function toggleSettings(forceState) {
+            const shouldOpen = forceState !== undefined
+                ? forceState
+                : ui.settingsPanel.style.display !== 'block';
+            ui.settingsPanel.style.display = shouldOpen ? 'block' : 'none';
+        }
+
+        ui.btnSettings.addEventListener('click', () => toggleSettings());
+        ui.closeSettings.addEventListener('click', () => toggleSettings(false));
+        ui.masterVolume.addEventListener('input', applyAudioSettingsFromUI);
+        ui.sfxVolume.addEventListener('input', applyAudioSettingsFromUI);
+        ui.musicVolume.addEventListener('input', applyAudioSettingsFromUI);
+        ui.musicEnabled.addEventListener('change', applyAudioSettingsFromUI);
+        syncSettingsUI();
+
+        const COST_LEAF_WORKER = 3, COST_SEED_SOLDIER = 5;
+        let keys = {};
+        let gameRunning = false, lastTime = 0;
+        let gamePhase = "PREP", phaseTimer = 300;
+        let soldiersAssembled = false;
+
+        let resources = [], foods = [], bugs = [], eggs = [], queens = {};
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            if (e.code === 'Escape') {
+                toggleSettings(false);
+                return;
+            }
+
+            if (e.code === 'KeyF') {
+                soldiersAssembled = !soldiersAssembled;
+                ui.assemble.innerText = soldiersAssembled ? "Soldiers: FOLLOWING YOU (Press F)" : "Soldiers: WANDERING BASE (Press F)";
+                ui.assemble.style.color = soldiersAssembled ? "#e74c3c" : "#f1c40f";
+                bugs.forEach(a => {
+                    if (a.team === 'blue' && (a.role === 'soldier' || a.role === 'super_major')) a.patrolPoint = null;
+                });
+            }
+
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+        });
+
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+        function formatTime(seconds) {
+            let m = Math.floor(seconds / 60);
+            let s = Math.floor(seconds % 60);
+            return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+        }
+
+        function spawnBug(team, role) {
+            let q = queens[team];
+            if (!q) return;
+            let angle = Math.random() * Math.PI * 2;
+            let d = q.radius + 30 + Math.random() * 50;
+            bugs.push(new Bug(team, role, q.x + Math.cos(angle) * d, q.y + Math.sin(angle) * d, q.location));
+        }
+
+        function layEgg(team, role) {
+            let q = queens[team];
+            if (!q) return;
+            let spawnDist = q.radius * 2.6;
+            let ex = q.x + Math.cos(q.angle + Math.PI) * spawnDist;
+            let ey = q.y + Math.sin(q.angle + Math.PI) * spawnDist;
+            ex += (Math.random() - 0.5) * 15;
+            ey += (Math.random() - 0.5) * 15;
+            eggs.push(new Egg(team, role, ex, ey, q.location));
+            sfx.play('egg', ex, ey, q.location);
+        }
+
+        function getNextHole(currentLoc, targetLoc) {
+            if (currentLoc === targetLoc) return null;
+            const pathMap = {
+                'blue_colony': { 'outside': HOLES.blue_inside, 'termite_colony': HOLES.blue_inside },
+                'outside': { 'blue_colony': HOLES.blue_outside, 'termite_colony': HOLES.termite_outside },
+                'termite_colony': { 'outside': HOLES.termite_inside, 'blue_colony': HOLES.termite_inside }
+            };
+            return pathMap[currentLoc][targetLoc];
+        }
+
+        function spawnResource() {
+            if (resources.length < 25) {
+                let map = MAPS.outside;
+                let fx, fy, valid = false;
+                let attempts = 0;
+                while (!valid && attempts < 50) {
+                    fx = Math.random() * (map.w - 100) + 50;
+                    fy = Math.random() * (map.h - 100) + 50;
+                    if (
+                        dist(fx, fy, HOLES.blue_outside.x, HOLES.blue_outside.y) > 200 &&
+                        dist(fx, fy, HOLES.termite_outside.x, HOLES.termite_outside.y) > 200 &&
+                        !(fx > (map.w / 2) - 40 && fx < (map.w / 2) + 40)
+                    ) {
+                        valid = true;
+                    }
+                    attempts++;
+                }
+                if (valid) {
+                    resources.push({
+                        x: fx,
+                        y: fy,
+                        radius: 25,
+                        type: Math.random() > 0.4 ? 'big_leaf' : 'seed_pile',
+                        amount: Math.floor(Math.random() * 30 + 20),
+                        location: 'outside'
+                    });
+                }
+            }
+        }
+
+        class Egg {
+            constructor(team, role, x, y, location) {
+                this.team = team;
+                this.role = role;
+                this.location = location;
+                this.x = x;
+                this.y = y;
+                this.maxHatchTime = 5.0;
+                this.hatchTimer = this.maxHatchTime;
+                this.radius = role === 'super_major' || role === 'king' || role === 'super_worker' ? 8 : 6;
+            }
+
+            update(dt) {
+                this.hatchTimer -= dt;
+                if (this.hatchTimer <= 0) {
+                    bugs.push(new Bug(this.team, this.role, this.x, this.y, this.location));
+                    sfx.play('hatch', this.x, this.y, this.location);
+                    return true;
+                }
+                return false;
+            }
+
+            draw() {
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
+                let pulse = 1 + Math.sin(this.hatchTimer * 5) * 0.05;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.radius * 1.5 * pulse, this.radius * 1.0 * pulse, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                let w = 18;
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(this.x - w / 2, this.y - this.radius * 1.5 - 8, w, 5);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(this.x - w / 2, this.y - this.radius * 1.5 - 8, w * (1 - this.hatchTimer / this.maxHatchTime), 5);
+            }
+        }
+
+        class Queen {
+            constructor(team, location, x, y, color) {
+                this.team = team;
+                this.location = location;
+                this.nestX = x;
+                this.nestY = y;
+                this.x = x;
+                this.y = y;
+                this.color = color;
+
+                this.speed = 12;
+                this.angle = this.team === 'blue' ? -Math.PI / 2 : Math.PI / 2;
+                this.patrolPoint = null;
+
+                this.radius = 45;
+                this.maxHp = team === 'blue' ? 1000 : 2500;
+                this.hp = this.maxHp;
+                this.maxHunger = 1500;
+                this.hunger = 1500;
+                this.leaves = team === 'blue' ? 25 : 0;
+                this.seeds = team === 'blue' ? 50 : 0;
+                this.aiTimer = 0;
+            }
+
+            update(dt) {
+                if (this.team === 'blue') {
+                    this.hunger -= 5.0 * dt;
+                    if (this.hunger <= 0) this.hp -= 10 * dt;
+                    if (this.hp <= 0) endGame("DEFEAT");
+                }
+
+                if (this.team === 'termite') {
+                    this.aiTimer += dt;
+                    if (gamePhase === "PREP") {
+                        this.leaves += 0.15 * dt;
+                        this.seeds += 0.05 * dt;
+                    } else if (gamePhase === "SWARM") {
+                        this.leaves += 0.4 * dt;
+                        this.seeds += 0.2 * dt;
+                    } else if (gamePhase === "VULNERABLE") {
+                        this.leaves += 0.8 * dt;
+                        this.seeds += 0.4 * dt;
+                        if (this.hp <= 0) endGame("VICTORY");
+                    }
+
+                    if (this.aiTimer > 1.5) {
+                        this.aiTimer = 0;
+                        let tWorkers = bugs.filter(a => a.team === 'termite' && a.role === 'worker').length;
+                        let tSWorkers = bugs.filter(a => a.team === 'termite' && a.role === 'super_worker').length;
+                        let tKings = bugs.filter(a => a.team === 'termite' && a.role === 'king').length;
+
+                        if (this.seeds >= 20 && tKings === 0) {
+                            this.seeds -= 20;
+                            layEgg('termite', 'king');
+                        } else if (this.leaves >= 10 && this.seeds >= 10 && tSWorkers < 10 && Math.random() < 0.25) {
+                            this.leaves -= 10;
+                            this.seeds -= 10;
+                            layEgg('termite', 'super_worker');
+                        } else if (this.seeds >= COST_SEED_SOLDIER) {
+                            this.seeds -= COST_SEED_SOLDIER;
+                            layEgg('termite', Math.random() < 0.15 ? 'super_major' : 'soldier');
+                        } else if (this.leaves >= COST_LEAF_WORKER && tWorkers < 30) {
+                            this.leaves -= COST_LEAF_WORKER;
+                            layEgg('termite', 'worker');
+                        }
+                    }
+                }
+
+                if (!this.patrolPoint || dist(this.x, this.y, this.patrolPoint.x, this.patrolPoint.y) < 5) {
+                    let rAngle = Math.random() * Math.PI * 2;
+                    let rDist = Math.random() * 110;
+                    this.patrolPoint = {
+                        x: this.nestX + Math.cos(rAngle) * rDist,
+                        y: this.nestY + Math.sin(rAngle) * rDist
+                    };
+                }
+
+                let dx = this.patrolPoint.x - this.x, dy = this.patrolPoint.y - this.y;
+                if (dx * dx + dy * dy > 0) {
+                    let d = Math.hypot(dx, dy);
+                    this.x += (dx / d) * this.speed * dt;
+                    this.y += (dy / d) * this.speed * dt;
+                    let targetAngle = Math.atan2(dy, dx);
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 1.5 * dt;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.team === 'termite' ? '#3e2723' : '#1e130c';
+                ctx.beginPath();
+                ctx.arc(this.nestX, this.nestY, 140, 0, Math.PI * 2);
+                ctx.fill();
+
+                drawBugShape(this.x, this.y, this.angle, this.color, this.radius, null, 'queen', this.team);
+
+                if (this.team === 'blue' || (this.team === 'termite' && gamePhase === "VULNERABLE")) {
+                    let barW = this.team === 'blue' ? 80 : 200;
+                    let yOffset = this.team === 'blue' ? 60 : 100;
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(this.x - barW / 2, this.y - yOffset, barW, 8);
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.fillRect(this.x - barW / 2, this.y - yOffset, barW * (this.hp / this.maxHp), 8);
+                }
+            }
+        }
+
+        class Bug {
+            constructor(team, role, x, y, location) {
+                this.team = team;
+                this.role = role;
+                this.location = location;
+                this.x = x;
+                this.y = y;
+                this.angle = 0;
+
+                this.carrying = [];
+                this.maxCarry = (role === 'super_worker') ? 3 : 1;
+
+                this.target = null;
+                this.targetType = null;
+                this.attackCooldown = 0;
+                this.teleportCooldown = 0;
+                this.harvestCooldown = 0;
+                this.patrolPoint = null;
+
+                if (role === 'player') {
+                    this.color = 'rgb(45, 45, 45)';
+                    this.radius = 7;
+                    this.speed = 350;
+                    this.hp = 150;
+                    this.maxHp = 150;
+                } else if (role === 'worker') {
+                    this.color = team === 'blue' ? 'rgb(65, 65, 65)' : '#f5e6c8';
+                    this.radius = 7;
+                    this.speed = team === 'blue' ? 120 : 50;
+                    this.hp = 30;
+                    this.maxHp = 30;
+                } else if (role === 'super_worker') {
+                    this.color = team === 'blue' ? 'rgb(50, 75, 50)' : '#e3c598';
+                    this.radius = 10;
+                    this.speed = team === 'blue' ? 110 : 45;
+                    this.hp = 80;
+                    this.maxHp = 80;
+                } else if (role === 'soldier') {
+                    this.color = team === 'blue' ? 'rgb(25, 25, 25)' : '#d4a373';
+                    this.radius = 13;
+                    this.speed = team === 'blue' ? 150 : 65;
+                    this.hp = 120;
+                    this.maxHp = 120;
+                } else if (role === 'super_major') {
+                    this.color = team === 'blue' ? 'rgb(15, 15, 15)' : '#b07b46';
+                    this.radius = 18;
+                    this.speed = team === 'blue' ? 110 : 60;
+                    this.hp = 300;
+                    this.maxHp = 300;
+                } else if (role === 'king') {
+                    this.color = '#8b5a2b';
+                    this.radius = 22;
+                    this.speed = 55;
+                    this.hp = 600;
+                    this.maxHp = 600;
+                }
+            }
+
+            pickPatrolPoint(loc) {
+                let map = MAPS[loc];
+                let minX = 40;
+                let maxX = map.w - 40;
+                if (gamePhase === "PREP" && loc === 'outside') {
+                    if (this.team === 'blue') maxX = (map.w / 2) - 40;
+                    if (this.team === 'termite') minX = (map.w / 2) + 40;
+                }
+                this.patrolPoint = {
+                    x: minX + Math.random() * (maxX - minX),
+                    y: 40 + Math.random() * (map.h - 80)
+                };
+            }
+
+            update(dt) {
+                if (this.attackCooldown > 0) this.attackCooldown -= dt;
+                if (this.teleportCooldown > 0) this.teleportCooldown -= dt;
+                if (this.harvestCooldown > 0) this.harvestCooldown -= dt;
+
+                let map = MAPS[this.location];
+                let myColony = this.team === 'blue' ? 'blue_colony' : 'termite_colony';
+                let dx = 0, dy = 0;
+                let targetLoc = this.location;
+
+                if (this.role === 'player') {
+                    if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+                    if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+                    if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+                    if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+                    if (dx !== 0 || dy !== 0) {
+                        let l = Math.hypot(dx, dy);
+                        dx /= l;
+                        dy /= l;
+                        this.x += dx * this.speed * dt;
+                        this.y += dy * this.speed * dt;
+                        let targetAngle = Math.atan2(dy, dx);
+                        let angleDiff = targetAngle - this.angle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        this.angle += angleDiff * 15.0 * dt;
+                    }
+
+                    if (this.carrying.length < this.maxCarry && this.location === 'outside') {
+                        for (let i = 0; i < foods.length; i++) {
+                            if (foods[i].location === this.location && dist(this.x, this.y, foods[i].x, foods[i].y) < this.radius + foods[i].radius) {
+                                this.carrying.push(foods[i].type);
+                                foods.splice(i, 1);
+                                sfx.play('harvest', this.x, this.y, this.location);
+                                if (this.carrying.length >= this.maxCarry) break;
+                            }
+                        }
+                    }
+
+                    if (keys['KeyH']) {
+                        if (this.harvestCooldown <= 0 && this.carrying.length < this.maxCarry && this.location === 'outside') {
+                            for (let i = 0; i < resources.length; i++) {
+                                let r = resources[i];
+                                if (dist(this.x, this.y, r.x, r.y) < this.radius + r.radius + 15) {
+                                    this.carrying.push(r.type === 'big_leaf' ? 'leaf' : 'seed');
+                                    r.amount--;
+                                    if (r.amount <= 0) resources.splice(i, 1);
+                                    this.harvestCooldown = 0.25;
+                                    sfx.play('harvest', this.x, this.y, this.location);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    let myQ = queens[this.team];
+                    if (this.carrying.length > 0 && this.location === myQ.location && dist(this.x, this.y, myQ.x, myQ.y) < this.radius + myQ.radius + 10) {
+                        this.carrying.forEach(f => feedQueen(this.team, f));
+                        this.carrying = [];
+                    }
+                } else {
+                    let tX = null, tY = null;
+                    let targetEnemy = null;
+
+                    if (this.role === 'worker' || this.role === 'super_worker') {
+                        if (this.carrying.length < this.maxCarry) {
+                            if (this.location !== 'outside') {
+                                targetLoc = 'outside';
+                            } else {
+                                let closest = Infinity;
+                                this.target = null;
+                                this.targetType = null;
+
+                                resources.forEach(r => {
+                                    if (gamePhase === "PREP") {
+                                        if (this.team === 'blue' && r.x > (MAPS.outside.w / 2) - 10) return;
+                                        if (this.team === 'termite' && r.x < (MAPS.outside.w / 2) + 10) return;
+                                    }
+                                    let d = dist(this.x, this.y, r.x, r.y);
+                                    if (d < closest) {
+                                        closest = d;
+                                        this.target = r;
+                                        this.targetType = 'resource';
+                                    }
+                                });
+
+                                foods.filter(f => f.location === 'outside').forEach(f => {
+                                    if (gamePhase === "PREP") {
+                                        if (this.team === 'blue' && f.x > (MAPS.outside.w / 2) - 10) return;
+                                        if (this.team === 'termite' && f.x < (MAPS.outside.w / 2) + 10) return;
+                                    }
+                                    let d = dist(this.x, this.y, f.x, f.y);
+                                    if (d < closest) {
+                                        closest = d;
+                                        this.target = f;
+                                        this.targetType = 'food';
+                                    }
+                                });
+
+                                if (this.target) {
+                                    tX = this.target.x;
+                                    tY = this.target.y;
+                                } else {
+                                    if (this.carrying.length > 0) {
+                                        targetLoc = myColony;
+                                        tX = queens[this.team].x;
+                                        tY = queens[this.team].y;
+                                    } else targetLoc = 'outside';
+                                }
+                            }
+                        } else {
+                            targetLoc = myColony;
+                            tX = queens[this.team].x;
+                            tY = queens[this.team].y;
+                        }
+                    } else if (this.role === 'soldier' || this.role === 'king' || this.role === 'super_major') {
+                        let viewDist = this.role === 'king' ? 600 : 350;
+                        let closestDist = Infinity;
+
+                        bugs.forEach(a => {
+                            if (a.team !== this.team && a.location === this.location) {
+                                let d = dist(this.x, this.y, a.x, a.y);
+                                if (d < viewDist && d < closestDist) {
+                                    targetEnemy = a;
+                                    closestDist = d;
+                                }
+                            }
+                        });
+
+                        let eq = queens[this.team === 'blue' ? 'termite' : 'blue'];
+                        if (eq.location === this.location) {
+                            let d = dist(this.x, this.y, eq.x, eq.y);
+                            if (d < viewDist && d < closestDist) {
+                                targetEnemy = eq;
+                                closestDist = d;
+                            }
+                        }
+
+                        if (targetEnemy) {
+                            targetLoc = this.location;
+                            tX = targetEnemy.x;
+                            tY = targetEnemy.y;
+                        } else {
+                            if (this.team === 'termite') {
+                                if (gamePhase === "PREP") targetLoc = 'termite_colony';
+                                else {
+                                    targetLoc = 'blue_colony';
+                                    tX = queens.blue.x;
+                                    tY = queens.blue.y;
+                                }
+                            } else if (this.team === 'blue') {
+                                if (soldiersAssembled) {
+                                    let p = bugs.find(a => a.role === 'player');
+                                    if (p) {
+                                        targetLoc = p.location;
+                                        tX = p.x;
+                                        tY = p.y;
+                                    }
+                                } else targetLoc = 'blue_colony';
+                            }
+                        }
+                    }
+
+                    let doPatrol = () => {
+                        if (!this.patrolPoint) this.pickPatrolPoint(this.location);
+                        if (dist(this.x, this.y, this.patrolPoint.x, this.patrolPoint.y) < 20) this.pickPatrolPoint(this.location);
+                        this.moveTowards(this.patrolPoint.x, this.patrolPoint.y, dt);
+                    };
+
+                    let intendedHole = getNextHole(this.location, targetLoc);
+
+                    if (intendedHole) {
+                        this.moveTowards(intendedHole.x, intendedHole.y, dt);
+                    } else {
+                        if (tX !== null && tY !== null) {
+                            let d = dist(this.x, this.y, tX, tY);
+
+                            if ((this.role === 'worker' || this.role === 'super_worker') && this.target && this.carrying.length < this.maxCarry) {
+                                if (d < this.radius + this.target.radius + 10) {
+                                    if (this.targetType === 'resource') {
+                                        if (this.harvestCooldown <= 0) {
+                                            let amountToTake = Math.min(this.maxCarry - this.carrying.length, this.target.amount);
+                                            for (let i = 0; i < amountToTake; i++) {
+                                                this.carrying.push(this.target.type === 'big_leaf' ? 'leaf' : 'seed');
+                                            }
+                                            this.target.amount -= amountToTake;
+
+                                            sfx.play('harvest', this.x, this.y, this.location);
+
+                                            if (this.target.amount <= 0) {
+                                                let idx = resources.indexOf(this.target);
+                                                if (idx > -1) resources.splice(idx, 1);
+                                            }
+                                            this.target = null;
+                                            this.harvestCooldown = 0.5;
+                                        }
+                                    } else if (this.targetType === 'food') {
+                                        let idx = foods.indexOf(this.target);
+                                        if (idx > -1) {
+                                            this.carrying.push(this.target.type);
+                                            foods.splice(idx, 1);
+                                            sfx.play('harvest', this.x, this.y, this.location);
+                                        }
+                                        this.target = null;
+                                    }
+                                } else this.moveTowards(tX, tY, dt);
+                            } else if ((this.role === 'worker' || this.role === 'super_worker') && this.carrying.length > 0 && targetLoc === myColony) {
+                                if (d < this.radius + queens[this.team].radius + 5) {
+                                    this.carrying.forEach(f => feedQueen(this.team, f));
+                                    this.carrying = [];
+                                } else this.moveTowards(tX, tY, dt);
+                            } else if ((this.role === 'soldier' || this.role === 'king' || this.role === 'super_major') && targetEnemy) {
+                                if (d < this.radius + targetEnemy.radius + 5) {
+                                    if (this.attackCooldown <= 0) {
+                                        let dmg = 20;
+                                        if (this.role === 'king') dmg = 40;
+                                        if (this.role === 'super_major') dmg = 45;
+                                        if (this.team === 'termite' && this.role === 'soldier') dmg = 15;
+
+                                        sfx.play('bite', this.x, this.y, this.location);
+                                        targetEnemy.hp -= dmg;
+                                        this.attackCooldown = 0.5;
+                                    }
+                                } else this.moveTowards(tX, tY, dt);
+                            } else if ((this.role === 'soldier' || this.role === 'super_major') && this.team === 'blue' && soldiersAssembled) {
+                                if (d > 80) this.moveTowards(tX, tY, dt);
+                            } else if ((this.role === 'soldier' || this.role === 'king' || this.role === 'super_major') && this.team === 'termite' && gamePhase !== "PREP") {
+                                this.moveTowards(tX, tY, dt);
+                            } else doPatrol();
+                        } else doPatrol();
+                    }
+                }
+
+                let minX = this.radius;
+                let maxX = map.w - this.radius;
+                if (gamePhase === "PREP" && this.location === 'outside') {
+                    if (this.team === 'blue') maxX = (map.w / 2) - this.radius;
+                    if (this.team === 'termite') minX = (map.w / 2) + this.radius;
+                }
+                this.x = Math.max(minX, Math.min(maxX, this.x));
+                this.y = Math.max(this.radius, Math.min(map.h - this.radius, this.y));
+
+                if (this.teleportCooldown <= 0) {
+                    Object.values(HOLES).filter(h => h.loc === this.location).forEach(h => {
+                        if (dist(this.x, this.y, h.x, h.y) < this.radius + 30) {
+                            let intendedHoleForTrigger = getNextHole(this.location, targetLoc);
+                            if (this.role === 'player' || h === intendedHoleForTrigger) {
+                                sfx.play('teleport', this.x, this.y, this.location);
+                                this.location = h.linkLoc;
+                                this.x = h.linkX + h.spawnDx;
+                                this.y = h.linkY + h.spawnDy;
+                                this.teleportCooldown = 0.5;
+                                this.patrolPoint = null;
+                            }
+                        }
+                    });
+                }
+            }
+
+            moveTowards(tx, ty, dt) {
+                let dx = tx - this.x, dy = ty - this.y;
+                let d = Math.hypot(dx, dy);
+                if (d > 0.1) {
+                    let targetAngle = Math.atan2(dy, dx);
+                    let angleDiff = targetAngle - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    this.angle += angleDiff * 5.0 * dt;
+
+                    if (d < this.speed * dt) {
+                        this.x = tx;
+                        this.y = ty;
+                    } else {
+                        this.x += Math.cos(this.angle) * this.speed * dt;
+                        this.y += Math.sin(this.angle) * this.speed * dt;
+                    }
+                }
+            }
+
+            draw() {
+                drawBugShape(this.x, this.y, this.angle, this.color, this.radius, this.carrying, this.role, this.team);
+                if (this.hp < this.maxHp) {
+                    let bW = this.role === 'king' || this.role === 'super_major' ? 40 : 30;
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(this.x - bW / 2, this.y - this.radius - 10, bW, 5);
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.fillRect(this.x - bW / 2, this.y - this.radius - 10, bW * (this.hp / this.maxHp), 5);
+                }
+            }
+        }
+
+        function drawBugShape(x, y, angle, color, size, carrying, role, team) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = (role === 'king' || role === 'queen' || role === 'super_major') ? 3 : 1.5;
+            for (let i = -1; i <= 1; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(i * size * 0.7, -size * 1.3);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(i * size * 0.7, size * 1.3);
+                ctx.stroke();
+            }
+
+            if (role === 'queen' && team === 'termite') {
+                ctx.fillStyle = '#fff0d4';
+                ctx.strokeStyle = '#8b5a2b';
+                ctx.lineWidth = 2;
+                let pulse = 1 + Math.sin(Date.now() / 300) * 0.05;
+                ctx.beginPath();
+                ctx.ellipse(-size * 2.5 * pulse, 0, size * 3.2 * pulse, size * 1.5 * pulse, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                for (let i = 1; i <= 5; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(-size * (i * 0.9) * pulse, 0, size * 0.2, size * 1.45 * pulse, 0, -Math.PI / 2, Math.PI / 2);
+                    ctx.stroke();
+                }
+                ctx.fillStyle = '#8b5a2b';
+                ctx.beginPath();
+                ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(size * 0.8, 0, size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = color;
+                ctx.strokeStyle = 'black';
+                ctx.beginPath();
+                ctx.ellipse(-size * 1.2, 0, size * 1.2, size * 0.8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                if (role === 'super_major') ctx.fillStyle = team === 'blue' ? '#7f1d1d' : '#8b4513';
+                else if (role === 'king') ctx.fillStyle = '#3e2723';
+
+                ctx.beginPath();
+                ctx.arc(size * 0.9, 0, size * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            if (role === 'king') {
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#2c1e16';
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, -size * 0.4);
+                ctx.lineTo(size * 2.5, -size * 0.8);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, size * 0.4);
+                ctx.lineTo(size * 2.5, size * 0.8);
+                ctx.stroke();
+            } else if (role === 'super_major') {
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'black';
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, -size * 0.5);
+                ctx.lineTo(size * 2.6, -size * 1.1);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, size * 0.5);
+                ctx.lineTo(size * 2.6, size * 1.1);
+                ctx.stroke();
+            } else if (role === 'soldier') {
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'black';
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, -size * 0.4);
+                ctx.lineTo(size * 2.2, -size * 0.8);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, size * 0.4);
+                ctx.lineTo(size * 2.2, size * 0.8);
+                ctx.stroke();
+            } else if (role !== 'queen') {
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'black';
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, -size * 0.2);
+                ctx.lineTo(size * 1.8, -size * 0.6);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, size * 0.2);
+                ctx.lineTo(size * 1.8, size * 0.6);
+                ctx.stroke();
+            } else if (role === 'queen' && team === 'blue') {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'black';
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, -size * 0.2);
+                ctx.lineTo(size * 1.6, -size * 0.5);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(size * 1.2, size * 0.2);
+                ctx.lineTo(size * 1.6, size * 0.5);
+                ctx.stroke();
+            }
+
+            if (carrying && carrying.length > 0) {
+                carrying.forEach((type, idx) => {
+                    ctx.save();
+                    if (idx === 0) ctx.translate(size * 1.8, 0);
+                    else if (idx === 1) ctx.translate(size * 1.5, -size * 0.7);
+                    else if (idx === 2) ctx.translate(size * 1.5, size * 0.7);
+
+                    ctx.fillStyle = type === 'leaf' ? '#2ecc71' : '#e67e22';
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'black';
+                    if (type === 'leaf') {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, size * 0.9, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    } else {
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, size * 1.1, size * 0.7, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                });
+            }
+            ctx.restore();
+        }
+
+        function feedQueen(team, foodType) {
+            let q = queens[team];
+            if (foodType === 'leaf') {
+                q.leaves++;
+                if (team === 'blue') q.hunger = Math.min(q.maxHunger, q.hunger + 50);
+            } else if (foodType === 'seed') {
+                q.seeds++;
+                if (team === 'blue') q.hunger = Math.min(q.maxHunger, q.hunger + 75);
+            }
+            sfx.play('dropoff', q.x, q.y, q.location);
+        }
+
+        window.buyUnit = function(role) {
+            if (role === 'worker' && queens.blue.leaves >= COST_LEAF_WORKER) {
+                queens.blue.leaves -= COST_LEAF_WORKER;
+                layEgg('blue', 'worker');
+            } else if (role === 'super_worker' && queens.blue.leaves >= 10 && queens.blue.seeds >= 10) {
+                queens.blue.leaves -= 10;
+                queens.blue.seeds -= 10;
+                layEgg('blue', 'super_worker');
+            } else if (role === 'soldier' && queens.blue.seeds >= COST_SEED_SOLDIER) {
+                queens.blue.seeds -= COST_SEED_SOLDIER;
+                layEgg('blue', Math.random() < 0.15 ? 'super_major' : 'soldier');
+            }
+        };
+
+        function updateUI() {
+            let bW = 0, bSW = 0, bS = 0, bM = 0, tW = 0, tSW = 0, tS = 0, tM = 0, tK = 0;
+            bugs.forEach(a => {
+                if (a.team === 'blue') {
+                    if (a.role === 'worker') bW++;
+                    if (a.role === 'super_worker') bSW++;
+                    if (a.role === 'soldier') bS++;
+                    if (a.role === 'super_major') bM++;
+                }
+                if (a.team === 'termite') {
+                    if (a.role === 'worker') tW++;
+                    if (a.role === 'super_worker') tSW++;
+                    if (a.role === 'soldier') tS++;
+                    if (a.role === 'super_major') tM++;
+                    if (a.role === 'king') tK++;
+                }
+            });
+
+            if (gamePhase === "PREP") {
+                ui.timer.innerText = "Peace Treaty: " + formatTime(phaseTimer);
+                ui.timer.style.color = "#d0d0d0";
+                ui.tStatus.innerText = "Termite Queen (Invulnerable)";
+                ui.tStatus.style.color = "#ecf0f1";
+            } else if (gamePhase === "SWARM") {
+                ui.timer.innerText = "THE SWARM! Vulnerable in: " + formatTime(phaseTimer);
+                ui.timer.style.color = "#e67e22";
+                ui.tStatus.innerText = "Termite Queen (Invulnerable)";
+                ui.tStatus.style.color = "#ecf0f1";
+            } else if (gamePhase === "VULNERABLE") {
+                ui.timer.innerText = "KILL THE TERMITE QUEEN!";
+                ui.timer.style.color = "#e74c3c";
+                ui.tStatus.innerText = "Termite Queen HP: " + Math.max(0, Math.floor(queens.termite.hp));
+                ui.tStatus.style.color = "#e74c3c";
+            }
+
+            ui.bHp.innerText = Math.max(0, Math.floor(queens.blue.hp));
+            ui.bHunger.innerText = Math.max(0, Math.floor(queens.blue.hunger)) + " / 1500";
+            ui.bLeaves.innerText = Math.floor(queens.blue.leaves);
+            ui.bSeeds.innerText = Math.floor(queens.blue.seeds);
+            ui.bWork.innerText = bW;
+            ui.bSWork.innerText = bSW;
+            ui.bSold.innerText = bS;
+            ui.bMajor.innerText = bM;
+
+            ui.tLeaves.innerText = Math.floor(queens.termite.leaves);
+            ui.tSeeds.innerText = Math.floor(queens.termite.seeds);
+            ui.tWork.innerText = tW;
+            ui.tSWork.innerText = tSW;
+            ui.tSold.innerText = tS;
+            ui.tMajor.innerText = tM;
+            ui.tKing.innerText = tK;
+
+            ui.btnWork.disabled = queens.blue.leaves < COST_LEAF_WORKER;
+            ui.btnSWork.disabled = queens.blue.leaves < 10 || queens.blue.seeds < 10;
+            ui.btnSold.disabled = queens.blue.seeds < COST_SEED_SOLDIER;
+        }
+
+        function endGame(result) {
+            gameRunning = false;
+            if (result === "VICTORY") {
+                ui.goTitle.innerText = "VICTORY!";
+                ui.goTitle.style.color = "#d0d0d0";
+                ui.goDesc.innerText = "You destroyed the Termite Queen and saved your colony!";
+                ui.goScreen.style.borderColor = "rgb(45,45,45)";
+            } else {
+                ui.goTitle.innerText = "DEFEAT";
+                ui.goTitle.style.color = "#e74c3c";
+                ui.goDesc.innerText = "Your colony was overrun.";
+                ui.goScreen.style.borderColor = "#e74c3c";
+            }
+            ui.goScreen.style.display = 'block';
+        }
+
+        function updateCamera(dt, playerLoc) {
+            if (keys['KeyQ']) camera.zoom -= 1.0 * dt;
+            if (keys['KeyE']) camera.zoom += 1.0 * dt;
+
+            let map = MAPS[playerLoc];
+            let minZoom = Math.max(canvas.width / map.w, canvas.height / map.h);
+            camera.zoom = Math.max(minZoom, Math.min(2.5, camera.zoom));
+            camera.visW = canvas.width / camera.zoom;
+            camera.visH = canvas.height / camera.zoom;
+
+            let player = bugs.find(a => a.role === 'player');
+            if (player) {
+                camera.x = player.x - camera.visW / 2;
+                camera.y = player.y - camera.visH / 2;
+                camera.x = Math.max(0, Math.min(camera.x, map.w - camera.visW));
+                camera.y = Math.max(0, Math.min(camera.y, map.h - camera.visH));
+            }
+        }
+
+        function drawMinimap(playerLoc) {
+            let map = MAPS[playerLoc];
+            const mmW = 240;
+            const mmH = 160;
+            const mmX = canvas.width - mmW - 15;
+            const mmY = canvas.height - mmH - 15;
+            const scaleX = mmW / map.w;
+            const scaleY = mmH / map.h;
+
+            ctx.fillStyle = 'rgba(20, 40, 20, 0.85)';
+            ctx.fillRect(mmX, mmY, mmW, mmH);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(mmX, mmY, mmW, mmH);
+
+            if (gamePhase === "PREP" && playerLoc === 'outside') {
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.fillRect(mmX + (mmW / 2) - 1, mmY, 2, mmH);
+            }
+
+            if (playerLoc === 'blue_colony') {
+                ctx.fillStyle = 'rgb(45, 45, 45)';
+                ctx.beginPath();
+                ctx.arc(mmX + queens.blue.x * scaleX, mmY + queens.blue.y * scaleY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (playerLoc === 'termite_colony') {
+                ctx.fillStyle = (gamePhase === "VULNERABLE" && Math.floor(Date.now() / 200) % 2 === 0) ? '#e74c3c' : '#f1e0c6';
+                ctx.beginPath();
+                ctx.ellipse(mmX + queens.termite.x * scaleX, mmY + queens.termite.y * scaleY, 8, 4, -Math.PI * 0.75, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            Object.values(HOLES).filter(h => h.loc === playerLoc).forEach(h => {
+                ctx.fillStyle = h.linkLoc === 'outside' ? '#2ecc71' : '#000';
+                ctx.beginPath();
+                ctx.arc(mmX + h.x * scaleX, mmY + h.y * scaleY, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            bugs.filter(b => b.location === playerLoc).forEach(a => {
+                if (a.role === 'player') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(mmX + a.x * scaleX - 1.5, mmY + a.y * scaleY - 1.5, 4, 4);
+                } else if (a.role === 'king') {
+                    ctx.fillStyle = '#8b5a2b';
+                    ctx.beginPath();
+                    ctx.arc(mmX + a.x * scaleX, mmY + a.y * scaleY, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = a.team === 'blue' ? 'rgb(65, 65, 65)' : '#e67e22';
+                    ctx.fillRect(mmX + a.x * scaleX - 1, mmY + a.y * scaleY - 1, 2, 2);
+                }
+            });
+
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mmX + camera.x * scaleX, mmY + camera.y * scaleY, camera.visW * scaleX, camera.visH * scaleY);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'left';
+            let mapName = playerLoc === 'outside' ? 'SURFACE' : (playerLoc === 'blue_colony' ? 'CARPENTER COLONY' : 'TERMITE MOUND');
+            ctx.fillText(mapName, mmX + 5, mmY + 15);
+        }
+
+        window.resetGame = function() {
+            queens = {
+                blue: new Queen('blue', 'blue_colony', 250, 500, 'rgb(45, 45, 45)'),
+                termite: new Queen('termite', 'termite_colony', 1300, 500, '#f1e0c6')
+            };
+
+            bugs = [new Bug('blue', 'player', queens.blue.nestX + 100, queens.blue.nestY, 'blue_colony')];
+            eggs = [];
+            resources = [];
+            foods = [];
+
+            for (let i = 0; i < 10; i++) spawnBug('blue', 'worker');
+            for (let i = 0; i < 5; i++) spawnBug('blue', 'soldier');
+
+            for (let i = 0; i < 11; i++) spawnBug('termite', 'worker');
+            for (let i = 0; i < 5; i++) spawnBug('termite', 'soldier');
+            spawnBug('termite', 'king');
+
+            for (let i = 0; i < 25; i++) spawnResource();
+
+            gamePhase = "PREP";
+            phaseTimer = 300;
+            soldiersAssembled = false;
+            camera.zoom = 1.0;
+            ui.assemble.innerText = "Soldiers: WANDERING BASE (Press F)";
+            ui.assemble.style.color = "#f1c40f";
+            sfx.applySettings();
+
+            gameRunning = true;
+            ui.goScreen.style.display = 'none';
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        };
+
+        function gameLoop(timestamp) {
+            if (!gameRunning) return;
+            let dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (dt > 0.1) dt = 0.016;
+
+            if (gamePhase === "PREP") {
+                phaseTimer -= dt;
+                if (phaseTimer <= 0) {
+                    gamePhase = "SWARM";
+                    phaseTimer = 300;
+                    bugs.forEach(a => a.patrolPoint = null);
+                    sfx.play('phase');
+                }
+            } else if (gamePhase === "SWARM") {
+                phaseTimer -= dt;
+                if (phaseTimer <= 0) {
+                    gamePhase = "VULNERABLE";
+                    sfx.play('phase');
+                }
+            }
+
+            queens.blue.update(dt);
+            queens.termite.update(dt);
+
+            for (let i = eggs.length - 1; i >= 0; i--) {
+                if (eggs[i].update(dt)) eggs.splice(i, 1);
+            }
+
+            for (let i = bugs.length - 1; i >= 0; i--) {
+                bugs[i].update(dt);
+                if (bugs[i].hp <= 0) {
+                    sfx.play('death', bugs[i].x, bugs[i].y, bugs[i].location);
+                    if (bugs[i].role === 'king') {
+                        for (let j = 0; j < 5; j++) {
+                            foods.push({
+                                x: bugs[i].x + (Math.random() - 0.5) * 40,
+                                y: bugs[i].y + (Math.random() - 0.5) * 40,
+                                radius: 8,
+                                type: 'seed',
+                                location: bugs[i].location
+                            });
+                        }
+                    } else if (bugs[i].carrying.length > 0) {
+                        bugs[i].carrying.forEach(c => {
+                            foods.push({
+                                x: bugs[i].x + (Math.random() - 0.5) * 20,
+                                y: bugs[i].y + (Math.random() - 0.5) * 20,
+                                radius: 8,
+                                type: c,
+                                location: bugs[i].location
+                            });
+                        });
+                    }
+                    if (bugs[i].role === 'player') endGame("DEFEAT");
+                    bugs.splice(i, 1);
+                }
+            }
+
+            if (Math.random() < 0.05) spawnResource();
+            updateUI();
+
+            let pLoc = bugs.find(a => a.role === 'player')?.location || 'outside';
+            let curMap = MAPS[pLoc];
+            updateCamera(dt, pLoc);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            ctx.fillStyle = curMap.bg;
+            ctx.fillRect(0, 0, curMap.w, curMap.h);
+
+            ctx.fillStyle = curMap.dirtColor;
+            curMap.dirt.forEach(d => {
+                if (d.x > camera.x - 20 && d.x < camera.x + camera.visW + 20 && d.y > camera.y - 20 && d.y < camera.y + camera.visH + 20) {
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            Object.values(HOLES).filter(h => h.loc === pLoc).forEach(h => {
+                let grad = ctx.createRadialGradient(h.x, h.y, 5, h.x, h.y, 45);
+                grad.addColorStop(0, h.color);
+                grad.addColorStop(1, '#000000');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(h.x, h.y, 45, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(h.label, h.x, h.y - 60);
+            });
+
+            if (pLoc === 'blue_colony') queens.blue.draw();
+            if (pLoc === 'termite_colony') queens.termite.draw();
+
+            eggs.filter(e => e.location === pLoc).forEach(e => e.draw());
+
+            resources.filter(r => r.location === pLoc).forEach(r => {
+                if (r.type === 'big_leaf') {
+                    ctx.fillStyle = '#27ae60';
+                    ctx.strokeStyle = '#145a32';
+                    ctx.lineWidth = 2;
+                    ctx.save();
+                    ctx.translate(r.x, r.y);
+                    ctx.rotate(-Math.PI / 4);
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, r.radius, r.radius * 0.6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.strokeStyle = '#1e8449';
+                    ctx.beginPath();
+                    ctx.moveTo(-r.radius * 0.8, 0);
+                    ctx.lineTo(r.radius * 0.8, 0);
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    ctx.fillStyle = '#e67e22';
+                    ctx.strokeStyle = '#873600';
+                    ctx.lineWidth = 1;
+                    ctx.save();
+                    ctx.translate(r.x, r.y);
+                    for (let i = 0; i < 5; i++) {
+                        let ox = Math.cos(i * Math.PI * 2 / 5) * r.radius * 0.4;
+                        let oy = Math.sin(i * Math.PI * 2 / 5) * r.radius * 0.4;
+                        ctx.beginPath();
+                        ctx.ellipse(ox, oy, r.radius * 0.5, r.radius * 0.3, i, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, r.radius * 0.6, r.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(r.amount, r.x, r.y - r.radius - 5);
+            });
+
+            foods.filter(f => f.location === pLoc).forEach(f => {
+                ctx.fillStyle = f.type === 'leaf' ? '#2ecc71' : '#e67e22';
+                ctx.strokeStyle = '#000';
+                ctx.beginPath();
+                if (f.type === 'leaf') {
+                    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                } else {
+                    ctx.ellipse(f.x, f.y, f.radius * 1.2, f.radius * 0.8, 0, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            if (gamePhase === "PREP" && pLoc === 'outside') {
+                let barrierX = curMap.w / 2;
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+                ctx.fillRect(barrierX - 15, 0, 30, curMap.h);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(barrierX - 15, 0);
+                ctx.lineTo(barrierX - 15, curMap.h);
+                ctx.moveTo(barrierX + 15, 0);
+                ctx.lineTo(barrierX + 15, curMap.h);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+                ctx.font = '36px Arial';
+                ctx.textAlign = 'center';
+                for (let y = 300; y < curMap.h; y += 600) {
+                    ctx.save();
+                    ctx.translate(barrierX, y);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.fillText("PEACE TREATY BARRIER - DO NOT CROSS", 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(0, 0, curMap.w, curMap.h);
+            bugs.filter(b => b.location === pLoc).forEach(a => a.draw());
+
+            ctx.restore();
+            drawMinimap(pLoc);
+            requestAnimationFrame(gameLoop);
+        }
+
+        resetGame();
+    </script>
+</body>
+</html>
