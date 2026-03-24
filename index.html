@@ -178,7 +178,12 @@
     <h1>Carpenter Ants vs Termites: The Great Swarm</h1>
     <div id="timer-display">Prep Phase: 05:00</div>
     <div class="instructions">Walk into HOLES to cross maps! Hold <b>[H]</b> near Big Leaves/Seed Piles to Harvest.</div>
-    <p><b>CLICK ANYWHERE to enable Audio & Music!</b> WASD to move. <b>Q / E</b> Zoom. <b>F</b> Toggle Soldiers.</p>
+    <p>WASD to move. <b>Q / E</b> Zoom. <b>F</b> Toggle Soldiers.</p>
+
+    <div id="start-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; cursor: pointer;">
+        <h1 style="color: #f1c40f; font-size: 48px; margin-bottom: 20px;">CLICK TO START</h1>
+        <p style="color: white; font-size: 24px;">Enable Audio & Music</p>
+    </div>
 
     <div id="game-container">
         <div id="game-ui">
@@ -309,7 +314,7 @@
             musicTrack: null,
             currentMusicUrl: null,
 
-            // URL Configuration (Using GitHub Raw for reliable hosting of Kenney Assets)
+            // URL Configuration (Using Archive.org for MP3 support across all browsers including Safari)
             urls: {
                 harvest: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/click_003.wav',
                 dropoff: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/drop_002.wav',
@@ -319,10 +324,10 @@
                 teleport: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/maximize_008.wav',
                 death: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/minimize_009.wav',
                 phase: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/confirmation_001.wav',
-                // Placeholder music URLs (Wikimedia Commons - Kevin MacLeod)
-                music_prep: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/Kevin_MacLeod_-_Impact_Prelude.ogg', 
-                music_swarm: 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Kevin_MacLeod_-_Volatile_Reaction.ogg',
-                music_vulnerable: 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Kevin_MacLeod_-_Volatile_Reaction.ogg'
+                // Kevin MacLeod Music (MP3 via Archive.org for better compatibility)
+                music_prep: 'https://archive.org/download/ImpactPrelude/ImpactPrelude.mp3', 
+                music_swarm: 'https://archive.org/download/VolatileReaction/VolatileReaction.mp3',
+                music_vulnerable: 'https://archive.org/download/VolatileReaction/VolatileReaction.mp3'
             },
 
             init: function() {
@@ -397,8 +402,8 @@
                     this.currentMusicUrl = targetUrl;
                     this.musicTrack = new Audio(targetUrl);
                     this.musicTrack.loop = true;
-                    this.musicTrack.volume = audioSettings.musicVolume * audioSettings.masterVolume;
-                    this.musicTrack.crossOrigin = "anonymous"; 
+                    this.musicTrack.volume = audioSettings.musicEnabled ? audioSettings.musicVolume * audioSettings.masterVolume : 0;
+                    // Removed crossOrigin to avoid potential CORS issues with redirected MP3s
                     
                     const playPromise = this.musicTrack.play();
                     if (playPromise !== undefined) {
@@ -441,9 +446,17 @@
             }
         };
 
-        window.addEventListener('click', () => { sfx.init(); window.focus(); });
-        window.addEventListener('keydown', () => { sfx.init(); });
-        window.addEventListener('touchstart', () => { sfx.init(); window.focus(); }, { passive: true });
+        const startOverlay = document.getElementById('start-overlay');
+        
+        function initAudioAndStart() {
+            sfx.init();
+            if (startOverlay) startOverlay.style.display = 'none';
+            window.focus();
+        }
+
+        startOverlay.addEventListener('click', initAudioAndStart);
+        window.addEventListener('keydown', () => { if (sfx.ctx && sfx.ctx.state === 'suspended') sfx.ctx.resume(); });
+        window.addEventListener('touchstart', initAudioAndStart, { passive: true });
 
         const MAPS = {
             outside: { w: 3000, h: 2000, bg: '#4CAF50', dirt: [], dirtColor: '#3e2723' },
