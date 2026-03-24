@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Carpenter Ants vs Termites: Map Segregation</title>
+    <title>Carpenter Ants vs Termites: The Great Swarm</title>
     <style>
         body {
             margin: 0;
@@ -259,6 +259,13 @@
     </div>
 
     <script>
+        // Global Error Handler
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('Game Error:', msg, 'Line:', lineNo, error);
+            // alert('Error: ' + msg + '\nLine: ' + lineNo); // Optional: alert user
+            return false;
+        };
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -314,7 +321,7 @@
             musicTrack: null,
             currentMusicUrl: null,
 
-            // URL Configuration (Using Archive.org for MP3 support across all browsers including Safari)
+            // URL Configuration
             urls: {
                 harvest: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/click_003.wav',
                 dropoff: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/drop_002.wav',
@@ -324,39 +331,50 @@
                 teleport: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/maximize_008.wav',
                 death: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/minimize_009.wav',
                 phase: 'https://raw.githubusercontent.com/Calinou/kenney-interface-sounds/master/addons/kenney_interface_sounds/confirmation_001.wav',
-                // Kevin MacLeod Music (MP3 via Archive.org for better compatibility)
                 music_prep: 'https://archive.org/download/ImpactPrelude/ImpactPrelude.mp3', 
                 music_swarm: 'https://archive.org/download/VolatileReaction/VolatileReaction.mp3',
                 music_vulnerable: 'https://archive.org/download/VolatileReaction/VolatileReaction.mp3'
             },
 
             init: function() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                try {
+                    if (!this.ctx) {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContext) {
+                            this.ctx = new AudioContext();
+                            
+                            this.masterGain = this.ctx.createGain();
+                            this.sfxBus = this.ctx.createGain();
+                            this.musicBus = this.ctx.createGain();
 
-                    this.masterGain = this.ctx.createGain();
-                    this.sfxBus = this.ctx.createGain();
-                    this.musicBus = this.ctx.createGain();
+                            this.sfxBus.connect(this.masterGain);
+                            this.musicBus.connect(this.masterGain);
+                            this.masterGain.connect(this.ctx.destination);
 
-                    this.sfxBus.connect(this.masterGain);
-                    this.musicBus.connect(this.masterGain);
-                    this.masterGain.connect(this.ctx.destination);
+                            this.loadSounds();
+                        }
+                    }
 
-                    this.loadSounds();
+                    if (this.ctx && this.ctx.state === 'suspended') {
+                        this.ctx.resume().catch(e => console.warn("Audio resume failed", e));
+                    }
+                    
+                    if (!this.musicStarted) this.startMusic();
                     this.applySettings();
+                } catch (e) {
+                    console.error("Audio Init Error:", e);
                 }
-
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-                if (!this.musicStarted) this.startMusic();
-                this.applySettings();
             },
 
             loadSounds: function() {
-                // Load SFX into buffers
+                if (!this.ctx) return;
                 Object.keys(this.urls).forEach(key => {
-                    if (key.startsWith('music_')) return; // Skip music, stream it instead
+                    if (key.startsWith('music_')) return; 
                     fetch(this.urls[key])
-                        .then(response => response.arrayBuffer())
+                        .then(response => {
+                            if (!response.ok) throw new Error('Network response was not ok');
+                            return response.arrayBuffer();
+                        })
                         .then(arrayBuffer => this.ctx.decodeAudioData(arrayBuffer))
                         .then(audioBuffer => {
                             this.buffers[key] = audioBuffer;
@@ -367,15 +385,16 @@
 
             applySettings: function() {
                 if (!this.ctx) return;
-                const now = this.ctx.currentTime;
-
-                this.masterGain.gain.setTargetAtTime(audioSettings.masterVolume, now, 0.01);
-                this.sfxBus.gain.setTargetAtTime(audioSettings.sfxVolume, now, 0.01);
-                this.musicBus.gain.setTargetAtTime(audioSettings.musicEnabled ? audioSettings.musicVolume : 0, now, 0.02);
-                
-                if (this.musicTrack) {
-                    this.musicTrack.volume = audioSettings.musicEnabled ? audioSettings.musicVolume * audioSettings.masterVolume : 0;
-                }
+                try {
+                    const now = this.ctx.currentTime;
+                    this.masterGain.gain.setTargetAtTime(audioSettings.masterVolume, now, 0.01);
+                    this.sfxBus.gain.setTargetAtTime(audioSettings.sfxVolume, now, 0.01);
+                    this.musicBus.gain.setTargetAtTime(audioSettings.musicEnabled ? audioSettings.musicVolume : 0, now, 0.02);
+                    
+                    if (this.musicTrack) {
+                        this.musicTrack.volume = audioSettings.musicEnabled ? audioSettings.musicVolume * audioSettings.masterVolume : 0;
+                    }
+                } catch (e) { console.warn("Apply Settings Error", e); }
             },
 
             startMusic: function() {
@@ -403,7 +422,6 @@
                     this.musicTrack = new Audio(targetUrl);
                     this.musicTrack.loop = true;
                     this.musicTrack.volume = audioSettings.musicEnabled ? audioSettings.musicVolume * audioSettings.masterVolume : 0;
-                    // Removed crossOrigin to avoid potential CORS issues with redirected MP3s
                     
                     const playPromise = this.musicTrack.play();
                     if (playPromise !== undefined) {
@@ -449,8 +467,8 @@
         const startOverlay = document.getElementById('start-overlay');
         
         function initAudioAndStart() {
+            startOverlay.style.display = 'none'; // Hide immediately
             sfx.init();
-            if (startOverlay) startOverlay.style.display = 'none';
             window.focus();
         }
 
@@ -619,6 +637,7 @@
                 'outside': { 'blue_colony': HOLES.blue_outside, 'termite_colony': HOLES.termite_outside },
                 'termite_colony': { 'outside': HOLES.termite_inside, 'blue_colony': HOLES.termite_inside }
             };
+            if (!pathMap[currentLoc]) return null;
             return pathMap[currentLoc][targetLoc];
         }
 
@@ -1522,6 +1541,8 @@
             camera.zoom = 1.0;
             ui.assemble.innerText = "Soldiers: WANDERING BASE (Press F)";
             ui.assemble.style.color = "#f1c40f";
+            
+            // Ensure audio settings are applied if context exists
             sfx.applySettings();
 
             gameRunning = true;
@@ -1729,6 +1750,7 @@
             requestAnimationFrame(gameLoop);
         }
 
+        // Initialize the game state immediately so the loop works
         resetGame();
     </script>
 </body>
